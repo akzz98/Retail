@@ -20,5 +20,16 @@ namespace Retail.Services
             await blobClient.UploadAsync(imageStream, overwrite: true);
             return blobClient.Uri.ToString(); // Return the URL of the uploaded image
         }
+
+        public async Task DeleteImageAsync(string imageUrl)
+        {
+            // Ensure the image URL is correctly decoded/encoded
+            var uri = new Uri(imageUrl);
+            var blobName = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/').Split('/').Last());
+
+            var blobClient = _containerClient.GetBlobClient(blobName);
+
+            await blobClient.DeleteIfExistsAsync(DeleteSnapshotsOption.IncludeSnapshots);
+        }
     }
 }

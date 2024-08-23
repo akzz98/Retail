@@ -90,21 +90,29 @@ namespace Retail.Controllers
 
         //Edit: /Product/Edit
         [HttpPost]
-        public async Task<IActionResult> Edit(ProductEntity product, IFormFile imageFile)
+        public async Task<IActionResult> Edit(ProductEntity product, IFormFile ImageFile)
         {
             if (ModelState.IsValid)
             {
                 try
                 {
-                    // If a new image is uploaded, replace the existing one
-                    if (imageFile != null && imageFile.Length > 0)
+                    // Check if a new image is uploaded
+                    if (ImageFile != null && ImageFile.Length > 0)
                     {
-                        using var stream = imageFile.OpenReadStream();
-                        product.ImageUrl = await _blobStorageService.UploadImageAsync(stream, imageFile.FileName);
+                        // Delete the old image if it exists
+                        if (!string.IsNullOrEmpty(product.ImageUrl))
+                        {
+                            await _blobStorageService.DeleteImageAsync(product.ImageUrl);
+                        }
+
+                        // Upload the new image
+                        using var stream = ImageFile.OpenReadStream();
+                        product.ImageUrl = await _blobStorageService.UploadImageAsync(stream, ImageFile.FileName);
                     }
 
-                    // Update the product details in Azure Table Storage
+                    // Update the product in Table Storage
                     await _tableStorageService.UpdateProductAsync(product);
+
                     return RedirectToAction("Index");
                 }
                 catch (Exception ex)
@@ -117,11 +125,27 @@ namespace Retail.Controllers
         }
 
 
+
         //Delete: /Product/Delete
         public async Task<IActionResult> Delete(string partitionKey, string rowKey)
         {
-            await _tableStorageService.DeleteProductAsync(partitionKey, rowKey);
+            // Retrieve the product to get the ImageUrl
+            var product = await _tableStorageService.GetProductAsync(partitionKey, rowKey);
+
+            if (product != null)
+            {
+                // Delete the image from Blob Storage
+                if (!string.IsNullOrEmpty(product.ImageUrl))
+                {
+                    await _blobStorageService.DeleteImageAsync(product.ImageUrl);
+                }
+
+                // Delete the product from Table Storage
+                await _tableStorageService.DeleteProductAsync(partitionKey, rowKey);
+            }
+
             return RedirectToAction("Index");
         }
     }
+    
 }
