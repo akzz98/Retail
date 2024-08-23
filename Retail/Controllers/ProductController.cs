@@ -90,12 +90,20 @@ namespace Retail.Controllers
 
         //Edit: /Product/Edit
         [HttpPost]
-        public async Task<IActionResult> Edit(ProductEntity product)
+        public async Task<IActionResult> Edit(ProductEntity product, IFormFile imageFile)
         {
             if (ModelState.IsValid)
             {
                 try
                 {
+                    // If a new image is uploaded, replace the existing one
+                    if (imageFile != null && imageFile.Length > 0)
+                    {
+                        using var stream = imageFile.OpenReadStream();
+                        product.ImageUrl = await _blobStorageService.UploadImageAsync(stream, imageFile.FileName);
+                    }
+
+                    // Update the product details in Azure Table Storage
                     await _tableStorageService.UpdateProductAsync(product);
                     return RedirectToAction("Index");
                 }
@@ -107,6 +115,7 @@ namespace Retail.Controllers
             }
             return View(product);
         }
+
 
         //Delete: /Product/Delete
         public async Task<IActionResult> Delete(string partitionKey, string rowKey)
