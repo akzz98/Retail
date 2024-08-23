@@ -1,0 +1,22 @@
+﻿@model IEnumerable<Retail.Models.ProductEntity>
+
+<h1>Cart</h1>
+
+<ul>
+    @if (Model.Any())
+    {
+        @foreach (var product in Model)
+        {
+            <li>
+                <img src="@product.ImageUrl" alt="@product.Name" style="width:100px;height:100px;" />
+                @product.Name - @product.Price
+                <a href="@Url.Action("Details", new { partitionKey = "Products", rowKey = product.RowKey })">View Details</a>
+                <a href="@Url.Action("RemoveFromCart", new { id = product.RowKey })" class="btn btn-danger">Remove</a>
+            </li>
+        }
+    }
+    else
+    {
+        <li>No items in the cart.</li>
+    }
+</ul>

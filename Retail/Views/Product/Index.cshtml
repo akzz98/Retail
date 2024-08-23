@@ -1,0 +1,44 @@
+﻿@model IEnumerable<Retail.Models.ProductEntity>
+
+<h1>Products</h1>
+
+@if (Model.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Image</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in Model)
+            {
+                <tr>
+                    <td>
+                        <img src="@product.ImageUrl" alt="@product.Name" style="width:100px;height:100px;" />
+                    </td>
+                    <td>@product.Name</td>
+                    <td>@product.Price.ToString("F2")</td>
+                    <td>
+                        <a href="@Url.Action("Details", new { partitionKey = "Products", rowKey = product.RowKey })" class="btn btn-info">View Details</a>
+                        <a href="@Url.Action("Edit", new { partitionKey = "Products", rowKey = product.RowKey })" class="btn btn-primary">Edit</a>
+                        <form asp-action="Delete" method="post" style="display:inline;">
+                            <input type="hidden" name="partitionKey" value="Products" />
+                            <input type="hidden" name="rowKey" value="@product.RowKey" />
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No products available.</p>
+}
+
+<a asp-action="Create" class="btn btn-primary">Add New Product</a>
