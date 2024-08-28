@@ -1,8 +1,18 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Retail.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add authentication services
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Account/Login";
+        options.LogoutPath = "/Account/Logout";
+        options.Cookie.Name = "RetailAuthCookie";
+    });
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
@@ -12,7 +22,7 @@ builder.Services.AddSingleton<TableStorageService>(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
     var connectionString = configuration.GetConnectionString("TableStorageConnection");
-    var tableName = configuration.GetValue<string>("ConnectionStrings:ProductTableName");  // Correct key
+    var tableName = configuration.GetValue<string>("ConnectionStrings:ProductTableName");  
     return new TableStorageService(connectionString, tableName);
 });
 
@@ -21,7 +31,7 @@ builder.Services.AddSingleton<CategoryStorageService>(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
     var connectionString = configuration.GetConnectionString("TableStorageConnection");
-    var tableName = configuration.GetValue<string>("ConnectionStrings:CategoryTableName");  // Correct key
+    var tableName = configuration.GetValue<string>("ConnectionStrings:CategoryTableName"); 
     return new CategoryStorageService(connectionString, tableName);
 });
 
@@ -33,6 +43,17 @@ builder.Services.AddSingleton<BlobStorageService>(sp =>
     var containerName = configuration.GetValue<string>("ConnectionStrings:BlobContainerName");
     return new BlobStorageService(connectionString, containerName);
 });
+
+// Add UserStorageService to the services container
+builder.Services.AddSingleton<UserStorageService>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("TableStorageConnection");
+    var tableName = "UsersTable";
+    return new UserStorageService(connectionString, tableName);
+});
+
+
 
 // Add session services
 builder.Services.AddDistributedMemoryCache(); // Adds a default in-memory implementation of IDistributedCache

@@ -1,0 +1,23 @@
+﻿<form asp-action="Edit" method="post">
+    <div>
+        <label>Name</label>
+        <input name="Name" value="@Model.Name" />
+    </div>
+    <div>
+        <label>Surname</label>
+        <input name="Surname" value="@Model.Surname" />
+    </div>
+    <div>
+        <label>Phone Number</label>
+        <input name="PhoneNumber" value="@Model.PhoneNumber" />
+    </div>
+    <div>
+        <label>Email</label>
+        <input name="Email" value="@Model.Email" />
+    </div>
+    <div>
+        <label>Role</label>
+        <input name="Role" value="@Model.Role" />
+    </div>
+    <button type="submit">Save Changes</button>
+</form>

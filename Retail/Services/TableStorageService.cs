@@ -1,24 +1,25 @@
 ﻿using Azure;
 using Azure.Data.Tables;
+using Retail.Entities;
 using Retail.Models;
 
 namespace Retail.Services
 {
     public class TableStorageService
     {
-        private readonly TableClient _tableClient;
+        private readonly TableClient _productTableClient;
 
         public TableStorageService(string connectionString, string tableName)
         {
-            _tableClient = new TableClient(connectionString, tableName);
-            _tableClient.CreateIfNotExists();
+            _productTableClient = new TableClient(connectionString, tableName);
+            _productTableClient.CreateIfNotExists();
         }
 
         public async Task<ProductEntity> GetProductAsync(string partitionKey, string rowKey)
         {
             try
             {
-                var response = await _tableClient.GetEntityAsync<ProductEntity>(partitionKey, rowKey);
+                var response = await _productTableClient.GetEntityAsync<ProductEntity>(partitionKey, rowKey);
                 return response.Value;
             }
             catch (RequestFailedException ex) when (ex.Status == 404)
@@ -36,7 +37,7 @@ namespace Retail.Services
         {
             try
             {
-                await _tableClient.AddEntityAsync(product);
+                await _productTableClient.AddEntityAsync(product);
             }
             catch (RequestFailedException ex) when (ex.Status == 409)
             {
@@ -54,7 +55,7 @@ namespace Retail.Services
         {
             try
             {
-                await _tableClient.UpdateEntityAsync(product, ETag.All, TableUpdateMode.Replace);
+                await _productTableClient.UpdateEntityAsync(product, ETag.All, TableUpdateMode.Replace);
             }
             catch (RequestFailedException ex) when (ex.Status == 404)
             {
@@ -72,7 +73,7 @@ namespace Retail.Services
         {
             try
             {
-                await _tableClient.DeleteEntityAsync(partitionKey, rowKey);
+                await _productTableClient.DeleteEntityAsync(partitionKey, rowKey);
             }
             catch (RequestFailedException ex) when (ex.Status == 404)
             {
@@ -91,7 +92,7 @@ namespace Retail.Services
             var products = new List<ProductEntity>();
             try
             {
-                await foreach (var entity in _tableClient.QueryAsync<ProductEntity>())
+                await foreach (var entity in _productTableClient.QueryAsync<ProductEntity>())
                 {
                     products.Add(entity);
                 }
@@ -102,6 +103,6 @@ namespace Retail.Services
                 throw new ApplicationException("An error occurred while retrieving all products.", ex);
             }
             return products;
-        }
+        }       
     }
 }
