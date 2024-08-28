@@ -69,8 +69,6 @@ public class CategoryController : Controller
         return View(category);
     }
 
-
-
     // Edit: /Category/Edit (GET)
     public async Task<IActionResult> Edit(string partitionKey, string rowKey)
     {
@@ -97,7 +95,6 @@ public class CategoryController : Controller
 
         return View(category);
     }
-
 
     // GET: /Category/Delete/
     public async Task<IActionResult> Delete(string partitionKey, string rowKey)

@@ -28,7 +28,6 @@ namespace Retail.Services
             return categoryList;
         }
 
-
         public async Task<CategoryEntity> GetCategoryAsync(string partitionKey, string rowKey)
         {
             return await _tableClient.GetEntityAsync<CategoryEntity>(partitionKey, rowKey);
@@ -55,7 +54,6 @@ namespace Retail.Services
                 throw new InvalidOperationException("Category to update not found.");
             }
         }
-
 
         public async Task DeleteCategoryAsync(string partitionKey, string rowKey)
         {

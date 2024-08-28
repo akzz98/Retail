@@ -40,7 +40,6 @@ namespace Retail.Controllers
             return View(productViewModels);
         }
 
-
         //View Product Details
         public async Task<IActionResult> Details(string partitionKey, string rowKey)
         {
@@ -142,7 +141,6 @@ namespace Retail.Controllers
             return View(product);
         }
 
-
         //Delete: /Product/Delete
         public async Task<IActionResult> Delete(string partitionKey, string rowKey)
         {
@@ -164,5 +162,4 @@ namespace Retail.Controllers
             return RedirectToAction("Index");
         }
     }
-    
 }

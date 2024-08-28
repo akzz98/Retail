@@ -5,7 +5,8 @@ namespace Retail.Entities
 {
     public class CategoryEntity : ITableEntity
     {
-        public CategoryEntity() { }
+        public CategoryEntity()
+        { }
 
         public CategoryEntity(string partitionKey, string rowKey)
         {
@@ -15,6 +16,7 @@ namespace Retail.Entities
 
         // Azure Table Storage properties
         public string PartitionKey { get; set; }
+
         public string RowKey { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
@@ -23,4 +25,3 @@ namespace Retail.Entities
         public string Name { get; set; }
     }
 }
-
