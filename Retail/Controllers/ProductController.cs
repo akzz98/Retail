@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Retail.Models;
+using Retail.Models.ViewModels;
 using Retail.Services;
 
 namespace Retail.Controllers
@@ -8,19 +10,36 @@ namespace Retail.Controllers
     {
         private readonly TableStorageService _tableStorageService;
         private readonly BlobStorageService _blobStorageService;
+        private readonly CategoryStorageService _categoryStorageService;
 
-        public ProductController(TableStorageService tableStorageService, BlobStorageService blobStorageService)
+        public ProductController(TableStorageService tableStorageService, BlobStorageService blobStorageService, CategoryStorageService categoryStorageService)
         {
             _tableStorageService = tableStorageService;
             _blobStorageService = blobStorageService;
+            _categoryStorageService = categoryStorageService;
         }
 
         // GET: /Product and return view with list of products
         public async Task<IActionResult> Index()
         {
             var products = await _tableStorageService.GetAllProductsAsync();
-            return View(products);
+            var categories = await _categoryStorageService.GetAllCategoriesAsync();
+
+            var productViewModels = products.Select(product => new ProductViewModel
+            {
+                PartitionKey = product.PartitionKey,
+                RowKey = product.RowKey,
+                Name = product.Name,
+                Price = product.Price,
+                Description = product.Description,
+                Quantity = product.Quantity,
+                ImageUrl = product.ImageUrl,
+                CategoryName = categories.FirstOrDefault(category => category.RowKey == product.CategoryRowKey)?.Name
+            });
+
+            return View(productViewModels);
         }
+
 
         //View Product Details
         public async Task<IActionResult> Details(string partitionKey, string rowKey)
@@ -36,8 +55,9 @@ namespace Retail.Controllers
         }
 
         // GET: /Product/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            ViewBag.Categories = new SelectList(await _categoryStorageService.GetAllCategoriesAsync(), "RowKey", "Name");
             return View();
         }
 
@@ -61,43 +81,41 @@ namespace Retail.Controllers
                     Name = product.Name,
                     Price = product.Price,
                     Description = product.Description,
-                    ImageUrl = imageUrl,
-                    Quantity = product.Quantity
+                    Quantity = product.Quantity,
+                    CategoryRowKey = product.CategoryRowKey,
+                    ImageUrl = imageUrl
                 };
 
                 await _tableStorageService.AddProductAsync(productEntity);
                 return RedirectToAction("Index");
             }
 
+            // Handle the case when model state is invalid
             return View(product);
         }
-
-
 
         //Get: /Product/Edit
         public async Task<IActionResult> Edit(string partitionKey, string rowKey)
         {
             var product = await _tableStorageService.GetProductAsync(partitionKey, rowKey);
-
             if (product == null)
             {
                 return NotFound();
             }
-
-            // Pass the product entity to the view for editing
+            ViewBag.Categories = new SelectList(await _categoryStorageService.GetAllCategoriesAsync(), "RowKey", "Name");
             return View(product);
         }
 
-        //Edit: /Product/Edit
+        //Post: /Product/Edit
         [HttpPost]
-        public async Task<IActionResult> Edit(ProductEntity product, IFormFile ImageFile)
+        public async Task<IActionResult> Edit(ProductEntity product, IFormFile imageFile)
         {
             if (ModelState.IsValid)
             {
                 try
                 {
                     // Check if a new image is uploaded
-                    if (ImageFile != null && ImageFile.Length > 0)
+                    if (imageFile != null && imageFile.Length > 0)
                     {
                         // Delete the old image if it exists
                         if (!string.IsNullOrEmpty(product.ImageUrl))
@@ -106,8 +124,8 @@ namespace Retail.Controllers
                         }
 
                         // Upload the new image
-                        using var stream = ImageFile.OpenReadStream();
-                        product.ImageUrl = await _blobStorageService.UploadImageAsync(stream, ImageFile.FileName);
+                        using var stream = imageFile.OpenReadStream();
+                        product.ImageUrl = await _blobStorageService.UploadImageAsync(stream, imageFile.FileName);
                     }
 
                     // Update the product in Table Storage
@@ -123,7 +141,6 @@ namespace Retail.Controllers
             }
             return View(product);
         }
-
 
 
         //Delete: /Product/Delete

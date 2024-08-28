@@ -1,8 +1,5 @@
 ﻿@model Retail.Models.ProductEntity
 
-@{
-    ViewBag.Title = "Edit Product";
-}
 
 <h2>Edit Product</h2>
 
@@ -32,6 +29,11 @@
     <div class="form-group">
         <label asp-for="ImageUrl">Current Image URL</label>
         <input asp-for="ImageUrl" class="form-control" readonly />
+    </div>
+    <div class="form-group">
+        <label asp-for="CategoryRowKey">Category</label>
+        <select asp-for="CategoryRowKey" asp-items="ViewBag.Categories" class="form-control"></select>
+        <span asp-validation-for="CategoryRowKey" class="text-danger"></span>
     </div>
     <div class="form-group">
         <label>Upload New Image</label>

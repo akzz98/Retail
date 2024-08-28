@@ -1,4 +1,4 @@
-﻿@model IEnumerable<Retail.Models.ProductEntity>
+﻿@model IEnumerable<Retail.Models.ViewModels.ProductViewModel>
 
 <h1>Products</h1>
 
@@ -7,9 +7,12 @@
     <table class="table">
         <thead>
             <tr>
-                <th>Image</th>
                 <th>Name</th>
                 <th>Price</th>
+                <th>Description</th>
+                <th>Quantity</th>
+                <th>Category</th>
+                <th>Image</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -17,19 +20,21 @@
             @foreach (var product in Model)
             {
                 <tr>
-                    <td>
-                        <img src="@product.ImageUrl" alt="@product.Name" style="width:100px;height:100px;" />
-                    </td>
                     <td>@product.Name</td>
-                    <td>@product.Price.ToString("F2")</td>
+                    <td>@product.Price</td>
+                    <td>@product.Description</td>
+                    <td>@product.Quantity</td>
+                    <td>@product.CategoryName</td>
                     <td>
-                        <a href="@Url.Action("Details", new { partitionKey = "Products", rowKey = product.RowKey })" class="btn btn-info">View Details</a>
-                        <a href="@Url.Action("Edit", new { partitionKey = "Products", rowKey = product.RowKey })" class="btn btn-primary">Edit</a>
-                        <form asp-action="Delete" method="post" style="display:inline;">
-                            <input type="hidden" name="partitionKey" value="Products" />
-                            <input type="hidden" name="rowKey" value="@product.RowKey" />
-                            <button type="submit" class="btn btn-danger">Delete</button>
-                        </form>
+                        @if (!string.IsNullOrEmpty(product.ImageUrl))
+                        {
+                            <img src="@product.ImageUrl" alt="Product Image" style="width: 100px; height: auto;" />
+                        }
+                    </td>
+                    <td>
+                        <a asp-action="Details" asp-route-partitionKey="@product.PartitionKey" asp-route-rowKey="@product.RowKey" class="btn btn-info">Details </a> 
+                        <a asp-action="Edit" asp-route-partitionKey="@product.PartitionKey" asp-route-rowKey="@product.RowKey" class="btn btn-primary">Edit</a> 
+                        <a asp-action="Delete" asp-route-partitionKey="@product.PartitionKey" asp-route-rowKey="@product.RowKey" onclick="return confirm('Are you sure?');" class="btn btn-danger">Delete</a>
                     </td>
                 </tr>
             }
