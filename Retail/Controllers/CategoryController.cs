@@ -1,10 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Retail.Entities;
 using Retail.Models;
 using Retail.Services;
 
+
+[Authorize(Roles = "Admin")]
 public class CategoryController : Controller
 {
+    
     private readonly CategoryStorageService _categoryStorageService;
 
     public CategoryController(CategoryStorageService categoryStorageService)

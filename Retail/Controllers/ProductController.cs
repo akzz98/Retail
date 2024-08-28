@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Retail.Models;
 using Retail.Models.ViewModels;
@@ -6,6 +7,7 @@ using Retail.Services;
 
 namespace Retail.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class ProductController : Controller
     {
         private readonly TableStorageService _tableStorageService;

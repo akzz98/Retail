@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Retail.Entities;
 using Retail.Models;
 using Retail.Services;
-using System.Security.Cryptography;
-using System.Text;
+using System.Security.Claims;
 
 namespace Retail.Controllers
 {
@@ -16,60 +18,65 @@ namespace Retail.Controllers
             _userService = userService;
         }
 
-        // GET: /Account/Register
+        // GET: Account/Register
+        [HttpGet]
         public IActionResult Register()
         {
             return View();
         }
 
-        // POST: /Account/Register
+        // POST: Account/Register
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterModel model)
         {
             if (ModelState.IsValid)
             {
-                // Hash the password
-                var passwordHash = ComputeHash(model.Password);
+                var existingUser = await _userService.GetUserByUsernameAsync(model.Username);
+                if (existingUser != null)
+                {
+                    ModelState.AddModelError(string.Empty, "Username is already taken.");
+                    return View(model);
+                }
 
                 var user = new UserEntity
                 {
                     PartitionKey = "Users",
                     RowKey = Guid.NewGuid().ToString(),
                     Username = model.Username,
+                    PasswordHash = HashPassword(model.Password),
                     Email = model.Email,
-                    PasswordHash = passwordHash,
                     FirstName = model.FirstName,
-                    LastName = model.LastName,
-                    Role = "User"
+                    LastName = model.LastName,                   
+                    Role = "User" 
                 };
 
                 await _userService.AddUserAsync(user);
-                return RedirectToAction("Login");
+                await SignInUser(user);
+                return RedirectToAction("Index", "Home");
             }
 
             return View(model);
         }
 
-        // GET: /Account/Login
+        // GET: Account/Login
+        [HttpGet]
         public IActionResult Login()
         {
             return View();
         }
 
-        // POST: /Account/Login
+        // POST: Account/Login
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(LoginModel model)
         {
             if (ModelState.IsValid)
             {
-                // Hash the password
-                var passwordHash = ComputeHash(model.Password);
-
-                var user = await _userService.ValidateUserAsync(model.Username, passwordHash);
-
-                if (user != null)
+                var user = await _userService.GetUserByUsernameAsync(model.Username);
+                if (user != null && VerifyPassword(user.PasswordHash, model.Password))
                 {
-                    // Store the user information in session or cookie as needed
+                    await SignInUser(user);
                     return RedirectToAction("Index", "Home");
                 }
 
@@ -79,13 +86,44 @@ namespace Retail.Controllers
             return View(model);
         }
 
-        private string ComputeHash(string input)
+        // POST: Account/Logout
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Logout()
         {
-            using (var sha256 = SHA256.Create())
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction("Login", "Account");
+        }
+
+        private async Task SignInUser(UserEntity user)
+        {
+            var claims = new List<Claim>
             {
-                byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
-                return Convert.ToBase64String(bytes);
-            }
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.NameIdentifier, user.RowKey),
+                new Claim(ClaimTypes.Role, user.Role)
+            };
+
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = true // Keeps the user signed in across sessions
+            };
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
+        }
+
+        private string HashPassword(string password)
+        {
+            var passwordHasher = new PasswordHasher<UserEntity>();
+            return passwordHasher.HashPassword(null, password);
+        }
+
+        private bool VerifyPassword(string hashedPassword, string enteredPassword)
+        {
+            var passwordHasher = new PasswordHasher<UserEntity>();
+            var result = passwordHasher.VerifyHashedPassword(null, hashedPassword, enteredPassword);
+            return result == PasswordVerificationResult.Success;
         }
     }
 }
