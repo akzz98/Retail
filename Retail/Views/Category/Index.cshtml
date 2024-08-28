@@ -1,0 +1,37 @@
+﻿@model IEnumerable<Retail.Entities.CategoryEntity>
+
+<h1>Categories</h1>
+
+@if (Model.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>              
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var category in Model)
+            {
+                <tr>
+                    <td>@category.Name</td>
+                    <td>
+                        <a href="@Url.Action("Edit", new { partitionKey = "Categories", rowKey = category.RowKey })" class="btn btn-primary">Edit</a>
+                        <form asp-action="Delete" method="post" style="display:inline;">
+                            <input type="hidden" name="partitionKey" value="Categories" />
+                            <input type="hidden" name="rowKey" value="@category.RowKey" />
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No Categories available.</p>
+}
+
+<a asp-action="Create" class="btn btn-primary">Add New Category</a>

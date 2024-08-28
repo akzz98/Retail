@@ -5,7 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// Add TableStorageService to the services container
+// Add TableStorageService(Product) to the services container
 builder.Services.AddSingleton<TableStorageService>(sp =>
 {
     var connectionString = "DefaultEndpointsProtocol=https;AccountName=a1storageservicetest;" +
@@ -13,6 +13,16 @@ builder.Services.AddSingleton<TableStorageService>(sp =>
                             "EndpointSuffix=core.windows.net";
     var tableName = "ProductsTable";
     return new TableStorageService(connectionString, tableName);
+});
+
+// Add CategoryStorageService to the services container
+builder.Services.AddSingleton<CategoryStorageService>(sp =>
+{
+    var connectionString = "DefaultEndpointsProtocol=https;AccountName=a1storageservicetest;" +
+                            "AccountKey=an4GuQzkA6bUselMYA1PtW5PsDimE8Q8bLB9VZaQ4Xt/8EsWp6Sn3LZtvCksdGQEObPT4twq1RTc+AStiWt5kQ==;" +
+                            "EndpointSuffix=core.windows.net";
+    var tableName = "CategoryTable";
+    return new CategoryStorageService(connectionString, tableName);
 });
 
 //Add BlobStorageService to the services container
