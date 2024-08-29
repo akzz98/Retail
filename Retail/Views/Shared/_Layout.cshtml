@@ -43,6 +43,9 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Login">Logout</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="EmployeeContract" asp-action="Index">Employee Contract</a>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -53,7 +56,9 @@
             @RenderBody()
         </main>
     </div>
-
+    @section Scripts {
+        <partial name="_ValidationScriptsPartial" />
+    }
     <footer class="border-top footer text-muted">
         <div class="container">
             &copy; 2024 - Retail - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>

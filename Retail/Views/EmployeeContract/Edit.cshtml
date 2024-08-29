@@ -1,0 +1,26 @@
+﻿@model string
+
+<h2>Edit Employee Contract</h2>
+
+<form asp-action="Edit" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="originalFileName" value="@Model" />
+    <div class="form-group">
+        <label for="newFile">Select new file</label>
+        <input type="file" name="newFile" id="newFile" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary">Update</button>
+</form>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Message"]
+    </div>
+}

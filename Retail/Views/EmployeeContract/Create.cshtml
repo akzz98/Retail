@@ -1,0 +1,23 @@
+﻿@{
+    ViewData["Title"] = "Add New Employee Contract";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<form asp-action="Create" enctype="multipart/form-data" method="post">
+    <div class="form-group">
+        <label for="employeeName">Employee Name</label>
+        <input type="text" id="employeeName" name="employeeName" class="form-control" required />
+    </div>
+
+    <div class="form-group">
+        <label for="contractFile">Contract File</label>
+        <input type="file" id="contractFile" name="contractFile" class="form-control" required />
+    </div>
+
+    <div class="form-group">
+        <input type="submit" value="Upload Contract" class="btn btn-primary" />
+    </div>
+</form>
+
+<a asp-action="Index" class="btn btn-secondary">Back to List</a>

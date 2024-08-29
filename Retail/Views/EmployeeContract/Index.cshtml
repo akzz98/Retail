@@ -1,0 +1,57 @@
+﻿@model IEnumerable<string>
+
+<h2>Employee Contracts</h2>
+
+<!-- Create Button -->
+<p>
+    <a asp-action="Create" class="btn btn-primary">Add New Employee Contract</a>
+</p>
+
+@if (Model != null && Model.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Contract Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var contract in Model)
+            {
+                <tr>
+                    <td>@contract</td>
+                    <td>
+                        <!-- Action buttons for download and delete -->
+                        <a href="@Url.Action("Download", new { fileName = contract })">Download</a>
+
+                        <a href="@Url.Action("Edit", new { fileName = contract })">Edit</a>                                       
+                    <!-- Delete Form -->
+                    <form asp-action="Delete" method="post" style="display:inline;">
+                        <input type="hidden" name="fileName" value="@contract" />
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No contracts available.</p>
+}
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Message"]
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}

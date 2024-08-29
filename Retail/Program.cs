@@ -53,6 +53,17 @@ builder.Services.AddSingleton<UserStorageService>(sp =>
     return new UserStorageService(connectionString, tableName);
 });
 
+//Add FileStorageService to the services container
+builder.Services.AddSingleton<FileStorageService>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("FileStorageConnection");
+    var fileShareName = "employeecontracts";
+    var logger = sp.GetRequiredService<ILogger<FileStorageService>>();
+    return new FileStorageService(connectionString, fileShareName, logger);
+});
+
+
 
 
 // Add session services
