@@ -64,8 +64,6 @@ builder.Services.AddSingleton<FileStorageService>(sp =>
 });
 
 
-
-
 // Add session services
 builder.Services.AddDistributedMemoryCache(); // Adds a default in-memory implementation of IDistributedCache
 builder.Services.AddSession(options =>
