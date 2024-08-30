@@ -1,8 +1,25 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿@model IEnumerable<Retail.Models.ViewModels.ProductViewModel>
+
+@{
+    ViewData["Title"] = "Home";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<h2>All Products</h2>
+
+<div class="row">
+    @foreach (var product in Model)
+    {
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <img src="@product.ImageUrl" class="card-img-top" alt="@product.Name">
+                <div class="card-body">
+                    <h5 class="card-title">@product.Name</h5>
+                    <p class="card-text">@product.Description</p>
+                    <p class="card-text"><strong>Category:</strong> @product.CategoryName</p>
+                    <p class="card-text"><strong>Price:</strong> @product.Price.ToString("C")</p>
+                    <a href="@Url.Action("Details", "Product", new { partitionKey = product.PartitionKey, rowKey = product.RowKey })" class="btn btn-primary">View Details</a>
+                </div>
+            </div>
+        </div>
+    }
 </div>

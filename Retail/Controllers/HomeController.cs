@@ -1,32 +1,37 @@
 using Microsoft.AspNetCore.Mvc;
-using Retail.Models;
-using System.Diagnostics;
+using Retail.Models.ViewModels;
+using Retail.Services;
 
 namespace Retail.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
+        private readonly TableStorageService _tableStorageService;
+        private readonly CategoryStorageService _categoryStorageService;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(TableStorageService tableStorageService, CategoryStorageService categoryStorageService)
         {
-            _logger = logger;
+            _tableStorageService = tableStorageService;
+            _categoryStorageService = categoryStorageService;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            return View();
-        }
+            var products = await _tableStorageService.GetAllProductsAsync();
+            var categories = await _categoryStorageService.GetAllCategoriesAsync();
 
-        public IActionResult Privacy()
-        {
-            return View();
-        }
-
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            var productViewModels = products.Select(product => new ProductViewModel
+            {
+                PartitionKey = product.PartitionKey,
+                RowKey = product.RowKey,
+                Name = product.Name,
+                Price = product.Price,
+                Description = product.Description,
+                CategoryName = categories.FirstOrDefault(category => category.RowKey == product.CategoryRowKey)?.Name,
+                Quantity = product.Quantity,
+                ImageUrl = product.ImageUrl
+            });
+            return View(productViewModels);
         }
     }
 }
