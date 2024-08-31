@@ -34,6 +34,7 @@ namespace Retail.Controllers
             return View(productViewModels);
         }
 
+        //View Details
         public async Task<IActionResult> Details(string partitionKey, string rowKey)
         {
             if (partitionKey == null || rowKey == null)
@@ -63,8 +64,6 @@ namespace Retail.Controllers
 
             return View(model);
         }
-
-
-
     }
 }
+

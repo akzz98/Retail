@@ -1,104 +1,85 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
-using Retail.Models;
+using Retail.Models.ViewModels;
 using Retail.Services;
 
-public class CartController : Controller
+namespace Retail.Controllers
 {
-    private readonly TableStorageService _tableStorageService;
-
-    public CartController(TableStorageService tableStorageService)
+    public class CartController : Controller
     {
-        _tableStorageService = tableStorageService;
-    }
+        private readonly TableStorageService _tableStorageService;
 
-    private List<ProductEntity> GetCart()
-    {
-        var cartJson = HttpContext.Session.GetString("Cart");
-        if (cartJson == null)
+        public CartController(TableStorageService tableStorageService)
         {
-            return new List<ProductEntity>();
-        }
-        return JsonConvert.DeserializeObject<List<ProductEntity>>(cartJson);
-    }
-
-    private void SaveCart(List<ProductEntity> cart)
-    {
-        var cartJson = JsonConvert.SerializeObject(cart);
-        HttpContext.Session.SetString("Cart", cartJson);
-    }
-
-    public async Task<IActionResult> Index()
-    {
-        var cart = GetCart();
-        if (cart.Count == 0)
-        {
-            return View(new List<ProductEntity>());
+            _tableStorageService = tableStorageService;
         }
 
-        // Retrieve product details for items in the cart
-        var cartProducts = await Task.WhenAll(cart.Select(async p =>
-            await _tableStorageService.GetProductAsync("Products", p.RowKey)));
-
-        return View(cartProducts);
-    }
-
-    public async Task<IActionResult> AddToCart(int id, int quantity)
-    {
-        var product = await _tableStorageService.GetProductAsync("Products", id.ToString());
-
-        if (product == null)
+        [HttpGet]
+        public IActionResult Index()
         {
-            return NotFound();
+            var cart = HttpContext.Session.Get<CartViewModel>("Cart") ?? new CartViewModel();
+            cart.TotalPrice = cart.Items.Sum(i => i.Product.Price * i.Quantity);
+            return View(cart);
         }
 
-        var cart = GetCart();
-        var cartItem = cart.FirstOrDefault(p => p.RowKey == id.ToString());
-
-        if (cartItem != null)
+        [HttpPost]
+        public async Task<IActionResult> Add(string partitionKey, string rowKey, int quantity)
         {
-            cartItem.Quantity += quantity;
-        }
-        else
-        {
-            product.Quantity = quantity;
-            cart.Add(product);
-        }
+            var product = await _tableStorageService.GetProductAsync(partitionKey, rowKey);
+            if (product == null)
+            {
+                return NotFound();
+            }
 
-        SaveCart(cart);
+            var cart = HttpContext.Session.Get<CartViewModel>("Cart") ?? new CartViewModel();
+            var cartItem = cart.Items.FirstOrDefault(i => i.Product.RowKey == rowKey);
 
-        return RedirectToAction("Index");
-    }
+            if (cartItem != null)
+            {
+                cartItem.Quantity += quantity;
+            }
+            else
+            {
+                cart.Items.Add(new CartItemViewModel
+                {
+                    Product = new ProductViewModel
+                    {
+                        PartitionKey = product.PartitionKey,
+                        RowKey = product.RowKey,
+                        Name = product.Name,
+                        Price = product.Price,
+                        Description = product.Description,
+                        CategoryName = product.CategoryRowKey,
+                        Quantity = product.Quantity,
+                        ImageUrl = product.ImageUrl
+                    },
+                    Quantity = quantity
+                });
+            }
 
-    public async Task<IActionResult> RemoveFromCart(int id)
-    {
-        var cart = GetCart();
-        var product = cart.FirstOrDefault(p => p.RowKey == id.ToString());
-
-        if (product != null)
-        {
-            cart.Remove(product);
-            SaveCart(cart);
-        }
-
-        return RedirectToAction("Index");
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> UpdateCart(int id, int quantity)
-    {
-        var cart = GetCart();
-        var product = cart.FirstOrDefault(p => p.RowKey == id.ToString());
-
-        if (product != null)
-        {
-            product.Quantity = quantity;
-            SaveCart(cart);
-
-            // Optionally update the product in Table Storage if needed
-            await _tableStorageService.UpdateProductAsync(product);
+            HttpContext.Session.Set("Cart", cart);
+            return RedirectToAction("Index");
         }
 
-        return RedirectToAction("Index");
+        [HttpPost]
+        public IActionResult Remove(string productId)
+        {
+            var cart = HttpContext.Session.Get<CartViewModel>("Cart") ?? new CartViewModel();
+            var cartItem = cart.Items.FirstOrDefault(i => i.Product.RowKey == productId);
+
+            if (cartItem != null)
+            {
+                cart.Items.Remove(cartItem);
+                HttpContext.Session.Set("Cart", cart);
+            }
+
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        public IActionResult Clear()
+        {
+            HttpContext.Session.Remove("Cart");
+            return RedirectToAction("Index");
+        }
     }
 }
