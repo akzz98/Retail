@@ -33,5 +33,38 @@ namespace Retail.Controllers
             });
             return View(productViewModels);
         }
+
+        public async Task<IActionResult> Details(string partitionKey, string rowKey)
+        {
+            if (partitionKey == null || rowKey == null)
+            {
+                return NotFound();
+            }
+
+            var product = await _tableStorageService.GetProductAsync(partitionKey, rowKey);
+            var categories = await _categoryStorageService.GetAllCategoriesAsync();
+
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            var model = new ProductViewModel
+            {
+                PartitionKey = product.PartitionKey,
+                RowKey = product.RowKey,
+                Name = product.Name,
+                Price = product.Price,
+                Description = product.Description,
+                CategoryName = categories.FirstOrDefault(category => category.RowKey == product.CategoryRowKey)?.Name,
+                Quantity = product.Quantity,
+                ImageUrl = product.ImageUrl
+            };
+
+            return View(model);
+        }
+
+
+
     }
 }
