@@ -1,16 +1,20 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Azure.Storage.Queues;
+using Microsoft.AspNetCore.Mvc;
 using Retail.Models.ViewModels;
 using Retail.Services;
+using System.Threading.Tasks;
 
 namespace Retail.Controllers
 {
     public class CartController : Controller
     {
         private readonly TableStorageService _tableStorageService;
+        private readonly QueueService _queueService; // Inject a queue service
 
-        public CartController(TableStorageService tableStorageService)
+        public CartController(TableStorageService tableStorageService, QueueService queueService)
         {
             _tableStorageService = tableStorageService;
+            _queueService = queueService; // Initialize queue service
         }
 
         [HttpGet]
@@ -97,29 +101,26 @@ namespace Retail.Controllers
 
             if (cart != null && cart.Items.Any())
             {
-                // Update the product quantities
                 foreach (var item in cart.Items)
                 {
-                    var product = await _tableStorageService.GetProductAsync(item.Product.PartitionKey, item.Product.RowKey);
-                    if (product != null)
+                    var message = new InventoryUpdateMessage
                     {
-                        product.Quantity -= item.Quantity;
-                        if (product.Quantity < 0)
-                        {
-                            product.Quantity = 0; // Ensure quantity doesn't go negative
-                        }
-                        await _tableStorageService.UpdateProductAsync(product);
-                    }
+                        PartitionKey = item.Product.PartitionKey,
+                        RowKey = item.Product.RowKey,
+                        Quantity = item.Quantity
+                    };
+
+                    // Send message to Azure Queue
+                    await _queueService.SendMessageAsync(message);
                 }
 
-                // Clear the cart after successful checkout
+                // Clear the cart after sending messages
                 HttpContext.Session.Remove("Cart");
 
                 // Set the success message
                 TempData["Message"] = "Item purchased successfully";
             }
 
-            // Redirect back to the cart page to show the message
             return RedirectToAction("Index");
         }
     }

@@ -22,7 +22,7 @@ builder.Services.AddSingleton<TableStorageService>(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
     var connectionString = configuration.GetConnectionString("TableStorageConnection");
-    var tableName = configuration.GetValue<string>("ConnectionStrings:ProductTableName");  
+    var tableName = configuration.GetValue<string>("ConnectionStrings:ProductTableName");
     return new TableStorageService(connectionString, tableName);
 });
 
@@ -31,7 +31,7 @@ builder.Services.AddSingleton<CategoryStorageService>(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
     var connectionString = configuration.GetConnectionString("TableStorageConnection");
-    var tableName = configuration.GetValue<string>("ConnectionStrings:CategoryTableName"); 
+    var tableName = configuration.GetValue<string>("ConnectionStrings:CategoryTableName");
     return new CategoryStorageService(connectionString, tableName);
 });
 
@@ -53,7 +53,7 @@ builder.Services.AddSingleton<UserStorageService>(sp =>
     return new UserStorageService(connectionString, tableName);
 });
 
-//Add FileStorageService to the services container
+// Add FileStorageService to the services container
 builder.Services.AddSingleton<FileStorageService>(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
@@ -63,6 +63,14 @@ builder.Services.AddSingleton<FileStorageService>(sp =>
     return new FileStorageService(connectionString, fileShareName, logger);
 });
 
+// Add QueueService to the services container
+builder.Services.AddSingleton<QueueService>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("QueueStorageConnection");
+    var queueName = "inventoryqueue"; // Queue name
+    return new QueueService(connectionString, queueName);
+});
 
 // Add session services
 builder.Services.AddDistributedMemoryCache(); // Adds a default in-memory implementation of IDistributedCache
@@ -89,6 +97,7 @@ app.UseRouting();
 // Add session middleware
 app.UseSession();
 
+app.UseAuthentication(); // Ensure authentication middleware is added
 app.UseAuthorization();
 
 app.MapControllerRoute(
