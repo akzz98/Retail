@@ -22,6 +22,9 @@ namespace Retail.Controllers
             // Update the cart item count in ViewBag
             ViewBag.CartItemCount = cart.Items.Sum(i => i.Quantity);
 
+            // Check for any TempData message
+            ViewBag.Message = TempData["Message"]?.ToString();
+
             return View(cart);
         }
 
@@ -60,12 +63,7 @@ namespace Retail.Controllers
                 });
             }
 
-            // Update the cart in session
             HttpContext.Session.Set("Cart", cart);
-
-            // Update the cart item count in ViewBag
-            ViewBag.CartItemCount = cart.Items.Sum(i => i.Quantity);
-
             return RedirectToAction("Index");
         }
 
@@ -81,9 +79,6 @@ namespace Retail.Controllers
                 HttpContext.Session.Set("Cart", cart);
             }
 
-            // Update the cart item count in ViewBag
-            ViewBag.CartItemCount = cart.Items.Sum(i => i.Quantity);
-
             return RedirectToAction("Index");
         }
 
@@ -91,10 +86,40 @@ namespace Retail.Controllers
         public IActionResult Clear()
         {
             HttpContext.Session.Remove("Cart");
+            return RedirectToAction("Index");
+        }
 
-            // Clear the cart item count in ViewBag
-            ViewBag.CartItemCount = 0;
+        // Updated Checkout Action
+        [HttpPost]
+        public async Task<IActionResult> Checkout()
+        {
+            var cart = HttpContext.Session.Get<CartViewModel>("Cart");
 
+            if (cart != null && cart.Items.Any())
+            {
+                // Update the product quantities
+                foreach (var item in cart.Items)
+                {
+                    var product = await _tableStorageService.GetProductAsync(item.Product.PartitionKey, item.Product.RowKey);
+                    if (product != null)
+                    {
+                        product.Quantity -= item.Quantity;
+                        if (product.Quantity < 0)
+                        {
+                            product.Quantity = 0; // Ensure quantity doesn't go negative
+                        }
+                        await _tableStorageService.UpdateProductAsync(product);
+                    }
+                }
+
+                // Clear the cart after successful checkout
+                HttpContext.Session.Remove("Cart");
+
+                // Set the success message
+                TempData["Message"] = "Item purchased successfully";
+            }
+
+            // Redirect back to the cart page to show the message
             return RedirectToAction("Index");
         }
     }
