@@ -18,6 +18,10 @@ namespace Retail.Controllers
         {
             var cart = HttpContext.Session.Get<CartViewModel>("Cart") ?? new CartViewModel();
             cart.TotalPrice = cart.Items.Sum(i => i.Product.Price * i.Quantity);
+
+            // Update the cart item count in ViewBag
+            ViewBag.CartItemCount = cart.Items.Sum(i => i.Quantity);
+
             return View(cart);
         }
 
@@ -56,7 +60,12 @@ namespace Retail.Controllers
                 });
             }
 
+            // Update the cart in session
             HttpContext.Session.Set("Cart", cart);
+
+            // Update the cart item count in ViewBag
+            ViewBag.CartItemCount = cart.Items.Sum(i => i.Quantity);
+
             return RedirectToAction("Index");
         }
 
@@ -72,6 +81,9 @@ namespace Retail.Controllers
                 HttpContext.Session.Set("Cart", cart);
             }
 
+            // Update the cart item count in ViewBag
+            ViewBag.CartItemCount = cart.Items.Sum(i => i.Quantity);
+
             return RedirectToAction("Index");
         }
 
@@ -79,6 +91,10 @@ namespace Retail.Controllers
         public IActionResult Clear()
         {
             HttpContext.Session.Remove("Cart");
+
+            // Clear the cart item count in ViewBag
+            ViewBag.CartItemCount = 0;
+
             return RedirectToAction("Index");
         }
     }
