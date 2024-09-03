@@ -23,27 +23,25 @@ public class FileStorageService
         // Get a reference to the directory
         ShareDirectoryClient directoryClient = _shareClient.GetDirectoryClient(directoryName);
 
-        // Ensure the directory exists
-        if (await directoryClient.ExistsAsync())
+        // Check if the directory exists, and create it if it doesn't
+        if (!await directoryClient.ExistsAsync())
         {
-            _logger.LogInformation($"Directory {directoryName} exists. Listing files...");
-            // List all files in the directory
-            await foreach (ShareFileItem item in directoryClient.GetFilesAndDirectoriesAsync())
-            {
-                if (item.IsDirectory == false)
-                {
-                    fileNames.Add(item.Name);
-                }
-            }
+            _logger.LogInformation($"Directory {directoryName} does not exist. Creating directory...");
+            await directoryClient.CreateAsync();
         }
-        else
+
+        // List all files in the directory
+        await foreach (ShareFileItem item in directoryClient.GetFilesAndDirectoriesAsync())
         {
-            _logger.LogError($"Directory {directoryName} does not exist.");
-            throw new Exception($"Directory {directoryName} does not exist.");
+            if (!item.IsDirectory)
+            {
+                fileNames.Add(item.Name);
+            }
         }
 
         return fileNames;
     }
+
 
     public async Task UploadFileAsync(string directoryName, string fileName, Stream fileStream)
     {
