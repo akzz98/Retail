@@ -2,31 +2,28 @@
 using Microsoft.AspNetCore.Mvc;
 using Retail.Entities;
 using Retail.Models;
-using Retail.Services;
-
 
 [Authorize(Roles = "Admin")]
 public class CategoryController : Controller
 {
-    
-    private readonly CategoryStorageService _categoryStorageService;
+    private readonly CategoryFunctionService _categoryFunctionService;
 
-    public CategoryController(CategoryStorageService categoryStorageService)
+    public CategoryController(CategoryFunctionService categoryFunctionService)
     {
-        _categoryStorageService = categoryStorageService;
+        _categoryFunctionService = categoryFunctionService;
     }
 
     // GET: /Category
     public async Task<IActionResult> Index()
     {
-        var categories = await _categoryStorageService.GetAllCategoriesAsync();
+        var categories = await _categoryFunctionService.GetAllCategoriesAsync();
         return View(categories);
     }
 
     // GET: /Category/Details/{partitionKey}/{rowKey}
     public async Task<IActionResult> Details(string partitionKey, string rowKey)
     {
-        var category = await _categoryStorageService.GetCategoryAsync(partitionKey, rowKey);
+        var category = await _categoryFunctionService.GetCategoryAsync(partitionKey, rowKey);
 
         if (category == null)
         {
@@ -45,45 +42,32 @@ public class CategoryController : Controller
     [HttpPost]
     public async Task<IActionResult> Create(Category category)
     {
-        // Log the received category
-        Console.WriteLine($"Received Category: Name={category.Name}");
-
         if (ModelState.IsValid)
         {
             var categoryEntity = new CategoryEntity
             {
                 PartitionKey = "Categories",
-                RowKey = Guid.NewGuid().ToString(), // Generate a unique RowKey
+                RowKey = Guid.NewGuid().ToString(), // Auto-generate RowKey
                 Name = category.Name
             };
 
-            // Log the category entity
-            Console.WriteLine($"CategoryEntity: PartitionKey={categoryEntity.PartitionKey}, RowKey={categoryEntity.RowKey}, Name={categoryEntity.Name}");
-
-            await _categoryStorageService.AddCategoryAsync(categoryEntity);
+            await _categoryFunctionService.CreateCategoryAsync(categoryEntity);
             return RedirectToAction("Index");
-        }
-
-        // Log ModelState errors
-        foreach (var error in ModelState)
-        {
-            Console.WriteLine($"ModelState Error: Key={error.Key}, Value={string.Join(", ", error.Value.Errors.Select(e => e.ErrorMessage))}");
         }
 
         return View(category);
     }
 
-    // Edit: /Category/Edit (GET)
+    // GET: /Category/Edit (GET)
     public async Task<IActionResult> Edit(string partitionKey, string rowKey)
     {
-        var category = await _categoryStorageService.GetCategoryAsync(partitionKey, rowKey);
+        var category = await _categoryFunctionService.GetCategoryAsync(partitionKey, rowKey);
 
         if (category == null)
         {
             return NotFound();
         }
 
-        // Pass the CategoryEntity directly to the view
         return View(category);
     }
 
@@ -93,7 +77,7 @@ public class CategoryController : Controller
     {
         if (ModelState.IsValid)
         {
-            await _categoryStorageService.UpdateCategoryAsync(category);
+            await _categoryFunctionService.UpdateCategoryAsync(category);
             return RedirectToAction("Index");
         }
 
@@ -103,11 +87,11 @@ public class CategoryController : Controller
     // GET: /Category/Delete/
     public async Task<IActionResult> Delete(string partitionKey, string rowKey)
     {
-        var category = await _categoryStorageService.GetCategoryAsync(partitionKey, rowKey);
+        var category = await _categoryFunctionService.GetCategoryAsync(partitionKey, rowKey);
 
         if (category != null)
         {
-            await _categoryStorageService.DeleteCategoryAsync(partitionKey, rowKey);
+            await _categoryFunctionService.DeleteCategoryAsync(partitionKey, rowKey);
         }
 
         return RedirectToAction("Index");

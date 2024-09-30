@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Retail.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -71,6 +69,17 @@ builder.Services.AddSingleton<QueueService>(sp =>
     var queueName = "inventoryqueue"; // Queue name
     return new QueueService(connectionString, queueName);
 });
+
+// Add HttpClient for CategoryFunctionService
+builder.Services.AddHttpClient<CategoryFunctionService>(); // Register HTTP client service
+
+builder.Services.AddSingleton<CategoryFunctionService>(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    return new CategoryFunctionService(httpClient, configuration);
+});
+
 
 // Add session services
 builder.Services.AddDistributedMemoryCache(); // Adds a default in-memory implementation of IDistributedCache

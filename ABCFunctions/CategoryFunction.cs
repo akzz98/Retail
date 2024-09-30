@@ -3,6 +3,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using Retail.Entities;
 using Retail.Services;
+using System.Net;
 using System.Text.Json;
 
 public class CategoryFunction
@@ -20,7 +21,7 @@ public class CategoryFunction
     public async Task<HttpResponseData> GetAllCategories([HttpTrigger(AuthorizationLevel.Function, "get", "GetAllCategories")] HttpRequestData req)
     {
         var categories = await _categoryStorageService.GetAllCategoriesAsync();
-        var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+        var response = req.CreateResponse(HttpStatusCode.OK);
         await response.WriteAsJsonAsync(categories);
         return response;
     }
@@ -31,7 +32,7 @@ public class CategoryFunction
         string partitionKey, string rowKey)
     {
         var category = await _categoryStorageService.GetCategoryAsync(partitionKey, rowKey);
-        var response = req.CreateResponse(category == null ? System.Net.HttpStatusCode.NotFound : System.Net.HttpStatusCode.OK);
+        var response = req.CreateResponse(category == null ? HttpStatusCode.NotFound : HttpStatusCode.OK);
         if (category != null)
         {
             await response.WriteAsJsonAsync(category);
@@ -41,52 +42,57 @@ public class CategoryFunction
 
     [Function("CreateCategory")]
     public async Task<HttpResponseData> CreateCategory(
-    [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "CreateCategory")] HttpRequestData req,
+        FunctionContext executionContext)
     {
-        _logger.LogInformation("Creating a new category.");
+        var logger = executionContext.GetLogger("CreateCategoryFunction");
 
-        var category = await req.ReadFromJsonAsync<CategoryEntity>();
-
-        if (category == null || string.IsNullOrEmpty(category.Name))
+        try
         {
-            var badRequestResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
-            await badRequestResponse.WriteStringAsync("Category Name is required.");
-            return badRequestResponse;
+            var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            var category = JsonSerializer.Deserialize<CategoryEntity>(requestBody);
+
+            // Ensure RowKey is generated if not provided
+            if (string.IsNullOrEmpty(category.RowKey))
+            {
+                category.RowKey = Guid.NewGuid().ToString(); // Auto-generate RowKey
+            }
+
+            // Insert the category into the table storage using the CategoryStorageService
+            await _categoryStorageService.AddCategoryAsync(category);
+
+            var response = req.CreateResponse(HttpStatusCode.Created);
+            await response.WriteStringAsync("Category created successfully");
+            return response;
         }
-
-        // Auto-generate RowKey using GUID
-        category.PartitionKey = "Categories";
-        category.RowKey = Guid.NewGuid().ToString();
-
-        _logger.LogInformation("Generated RowKey: {RowKey}", category.RowKey);
-
-        // Add the new category entity
-        await _categoryStorageService.AddCategoryAsync(category);
-
-        var response = req.CreateResponse(System.Net.HttpStatusCode.Created);
-        await response.WriteAsJsonAsync(category);
-
-        return response;
+        catch (Exception ex)
+        {
+            logger.LogError($"Error creating category: {ex.Message}");
+            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync($"Error: {ex.Message}");
+            return errorResponse;
+        }
     }
 
-
     [Function("UpdateCategory")]
-    public async Task<HttpResponseData> UpdateCategory([HttpTrigger(AuthorizationLevel.Function, "put", "UpdateCategory")] HttpRequestData req)
+    public async Task<HttpResponseData> UpdateCategory([HttpTrigger(AuthorizationLevel.Function, "put", Route = "UpdateCategory")] HttpRequestData req)
     {
-        string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+        var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var category = JsonSerializer.Deserialize<CategoryEntity>(requestBody);
+
         await _categoryStorageService.UpdateCategoryAsync(category);
-        var response = req.CreateResponse(System.Net.HttpStatusCode.NoContent);
+
+        var response = req.CreateResponse(HttpStatusCode.NoContent);
         return response;
     }
 
     [Function("DeleteCategory")]
     public async Task<HttpResponseData> DeleteCategory(
-        [HttpTrigger(AuthorizationLevel.Function, "delete", "DeleteCategory/{partitionKey}/{rowKey}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "DeleteCategory/{partitionKey}/{rowKey}")] HttpRequestData req,
         string partitionKey, string rowKey)
     {
         await _categoryStorageService.DeleteCategoryAsync(partitionKey, rowKey);
-        var response = req.CreateResponse(System.Net.HttpStatusCode.NoContent);
+        var response = req.CreateResponse(HttpStatusCode.NoContent);
         return response;
     }
 }
