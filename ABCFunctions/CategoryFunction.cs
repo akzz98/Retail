@@ -40,15 +40,35 @@ public class CategoryFunction
     }
 
     [Function("CreateCategory")]
-    public async Task<HttpResponseData> CreateCategory([HttpTrigger(AuthorizationLevel.Function, "post", "CreateCategory")] HttpRequestData req)
+    public async Task<HttpResponseData> CreateCategory(
+    [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
-        string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-        var category = JsonSerializer.Deserialize<CategoryEntity>(requestBody);
+        _logger.LogInformation("Creating a new category.");
+
+        var category = await req.ReadFromJsonAsync<CategoryEntity>();
+
+        if (category == null || string.IsNullOrEmpty(category.Name))
+        {
+            var badRequestResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
+            await badRequestResponse.WriteStringAsync("Category Name is required.");
+            return badRequestResponse;
+        }
+
+        // Auto-generate RowKey using GUID
+        category.PartitionKey = "Categories";
+        category.RowKey = Guid.NewGuid().ToString();
+
+        _logger.LogInformation("Generated RowKey: {RowKey}", category.RowKey);
+
+        // Add the new category entity
         await _categoryStorageService.AddCategoryAsync(category);
+
         var response = req.CreateResponse(System.Net.HttpStatusCode.Created);
         await response.WriteAsJsonAsync(category);
+
         return response;
     }
+
 
     [Function("UpdateCategory")]
     public async Task<HttpResponseData> UpdateCategory([HttpTrigger(AuthorizationLevel.Function, "put", "UpdateCategory")] HttpRequestData req)
