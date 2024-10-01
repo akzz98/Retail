@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Extensions.Logging;
 using Retail.Models;
 using Retail.Models.ViewModels;
 using Retail.Services;
+using System.Net.Http.Headers;
 
 namespace Retail.Controllers
 {
@@ -13,12 +15,14 @@ namespace Retail.Controllers
         private readonly TableStorageService _tableStorageService;
         private readonly BlobStorageService _blobStorageService;
         private readonly CategoryStorageService _categoryStorageService;
+        private readonly ILogger<ProductController> _logger;
 
-        public ProductController(TableStorageService tableStorageService, BlobStorageService blobStorageService, CategoryStorageService categoryStorageService)
+        public ProductController(TableStorageService tableStorageService, BlobStorageService blobStorageService, CategoryStorageService categoryStorageService, ILogger<ProductController> logger) // Add logger to constructor
         {
             _tableStorageService = tableStorageService;
             _blobStorageService = blobStorageService;
             _categoryStorageService = categoryStorageService;
+            _logger = logger;
         }
 
         // GET: /Product and return view with list of products
@@ -71,8 +75,43 @@ namespace Retail.Controllers
                 string imageUrl = null;
                 if (imageFile != null && imageFile.Length > 0)
                 {
-                    using var stream = imageFile.OpenReadStream();
-                    imageUrl = await _blobStorageService.UploadImageAsync(stream, imageFile.FileName);
+                    try
+                    {
+                        using var client = new HttpClient
+                        {
+                            Timeout = TimeSpan.FromMinutes(5) // Set timeout to 5 minutes
+                        };
+                        var content = new MultipartFormDataContent();
+                        var fileContent = new StreamContent(imageFile.OpenReadStream());
+                        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse(imageFile.ContentType);
+                        content.Add(fileContent, "image", imageFile.FileName);
+
+                        // Log the start of the request
+                        _logger.LogInformation("Starting image upload...");
+
+                        var response = await client.PostAsync("http://localhost:7199/api/UploadImage", content);
+
+                        // Log the end of the request
+                        _logger.LogInformation("Image upload completed.");
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var responseData = await response.Content.ReadFromJsonAsync<dynamic>();
+                            imageUrl = responseData.imageUrl;
+                        }
+                    }
+                    catch (TaskCanceledException ex)
+                    {
+                        _logger.LogError("Image upload task was canceled: {Message}", ex.Message);
+                        ModelState.AddModelError(string.Empty, "Image upload took too long and was canceled.");
+                        return View(product);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("An error occurred during image upload: {Message}", ex.Message);
+                        ModelState.AddModelError(string.Empty, "An error occurred during image upload.");
+                        return View(product);
+                    }
                 }
 
                 var productEntity = new ProductEntity
@@ -91,9 +130,9 @@ namespace Retail.Controllers
                 return RedirectToAction("Index");
             }
 
-            // Handle the case when model state is invalid
             return View(product);
         }
+
 
         //Get: /Product/Edit
         public async Task<IActionResult> Edit(string partitionKey, string rowKey)
