@@ -1,0 +1,9 @@
+{
+    "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "BlobStorageConnection": "DefaultEndpointsProtocol=https;AccountName=a1storageservicetest;AccountKey=an4GuQzkA6bUselMYA1PtW5PsDimE8Q8bLB9VZaQ4Xt/8EsWp6Sn3LZtvCksdGQEObPT4twq1RTc+AStiWt5kQ==;EndpointSuffix=core.windows.net",
+    "BlobContainerName": "product-images"
+  }
+}
