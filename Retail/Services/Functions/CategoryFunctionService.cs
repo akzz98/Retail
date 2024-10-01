@@ -35,7 +35,7 @@ public class CategoryFunctionService
     {
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/CreateCategory")
         {
-            Content = new StringContent(JsonSerializer.Serialize(category), Encoding.UTF8, "application/json") // Set Content-Type
+            Content = new StringContent(JsonSerializer.Serialize(category), Encoding.UTF8, "application/json")
         };
 
         var response = await _httpClient.SendAsync(requestMessage);
@@ -51,9 +51,20 @@ public class CategoryFunctionService
     // Update an existing category
     public async Task UpdateCategoryAsync(CategoryEntity category)
     {
+        var categoryJson = JsonSerializer.Serialize(category);
+        Console.WriteLine($"Updating category: {categoryJson}");
+
         var response = await _httpClient.PutAsJsonAsync($"{_baseUrl}/UpdateCategory", category);
-        response.EnsureSuccessStatusCode();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException($"Failed to update category. Status code: {response.StatusCode}, Error: {errorContent}");
+        }
     }
+
+
+
 
     // Delete a category
     public async Task DeleteCategoryAsync(string partitionKey, string rowKey)

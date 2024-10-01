@@ -43,8 +43,7 @@ namespace Retail.Services
             var existingCategory = await GetCategoryAsync(category.PartitionKey, category.RowKey);
 
             if (existingCategory != null)
-            {
-                // Use the ETag of the existing entity
+            {        
                 existingCategory.Name = category.Name;
 
                 await _tableClient.UpdateEntityAsync(existingCategory, existingCategory.ETag);

@@ -28,7 +28,7 @@ public class CategoryFunction
 
     [Function("GetCategory")]
     public async Task<HttpResponseData> GetCategory(
-        [HttpTrigger(AuthorizationLevel.Function, "get", "GetCategory/{partitionKey}/{rowKey}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "GetCategory/{partitionKey}/{rowKey}")] HttpRequestData req,
         string partitionKey, string rowKey)
     {
         var category = await _categoryStorageService.GetCategoryAsync(partitionKey, rowKey);
@@ -42,11 +42,9 @@ public class CategoryFunction
 
     [Function("CreateCategory")]
     public async Task<HttpResponseData> CreateCategory(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "CreateCategory")] HttpRequestData req,
-        FunctionContext executionContext)
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "CreateCategory")] HttpRequestData req)
     {
-        var logger = executionContext.GetLogger("CreateCategoryFunction");
-
+        var logger = req.FunctionContext.GetLogger("CreateCategoryFunction");
         try
         {
             var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -58,7 +56,6 @@ public class CategoryFunction
                 category.RowKey = Guid.NewGuid().ToString(); // Auto-generate RowKey
             }
 
-            // Insert the category into the table storage using the CategoryStorageService
             await _categoryStorageService.AddCategoryAsync(category);
 
             var response = req.CreateResponse(HttpStatusCode.Created);
@@ -75,16 +72,55 @@ public class CategoryFunction
     }
 
     [Function("UpdateCategory")]
-    public async Task<HttpResponseData> UpdateCategory([HttpTrigger(AuthorizationLevel.Function, "put", Route = "UpdateCategory")] HttpRequestData req)
+    public async Task<HttpResponseData> UpdateCategory(
+    [HttpTrigger(AuthorizationLevel.Function, "put", Route = "UpdateCategory")] HttpRequestData req)
     {
-        var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-        var category = JsonSerializer.Deserialize<CategoryEntity>(requestBody);
+        try
+        {
+            var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            Console.WriteLine($"Request body: {requestBody}");
 
-        await _categoryStorageService.UpdateCategoryAsync(category);
+            if (string.IsNullOrWhiteSpace(requestBody))
+            {
+                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badRequestResponse.WriteStringAsync("Request body cannot be empty.");
+                return badRequestResponse;
+            }
 
-        var response = req.CreateResponse(HttpStatusCode.NoContent);
-        return response;
+            var category = JsonSerializer.Deserialize<CategoryEntity>(requestBody);
+
+            if (category == null || string.IsNullOrEmpty(category.PartitionKey) || string.IsNullOrEmpty(category.RowKey))
+            {
+                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badRequestResponse.WriteStringAsync("Invalid category data.");
+                return badRequestResponse;
+            }
+
+            // Fetch the existing category
+            var existingCategory = await _categoryStorageService.GetCategoryAsync(category.PartitionKey, category.RowKey);
+            if (existingCategory == null)
+            {
+                var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                await notFoundResponse.WriteStringAsync("Category not found.");
+                return notFoundResponse;
+            }
+
+            // Ensure ETag and Timestamp are used for concurrency control
+            category.ETag = existingCategory.ETag;
+            category.Timestamp = existingCategory.Timestamp;
+
+            await _categoryStorageService.UpdateCategoryAsync(category);
+            var response = req.CreateResponse(HttpStatusCode.NoContent);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync($"Error: {ex.Message}");
+            return errorResponse;
+        }
     }
+
 
     [Function("DeleteCategory")]
     public async Task<HttpResponseData> DeleteCategory(

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Retail.Entities;
 using Retail.Models;
+using System.Text.Json;
 
 [Authorize(Roles = "Admin")]
 public class CategoryController : Controller
@@ -58,16 +59,15 @@ public class CategoryController : Controller
         return View(category);
     }
 
-    // GET: /Category/Edit (GET)
+    // GET: /Category/Edit/{partitionKey}/{rowKey}
+    [HttpGet]
     public async Task<IActionResult> Edit(string partitionKey, string rowKey)
     {
         var category = await _categoryFunctionService.GetCategoryAsync(partitionKey, rowKey);
-
         if (category == null)
         {
             return NotFound();
         }
-
         return View(category);
     }
 
@@ -77,12 +77,22 @@ public class CategoryController : Controller
     {
         if (ModelState.IsValid)
         {
-            await _categoryFunctionService.UpdateCategoryAsync(category);
-            return RedirectToAction("Index");
+            try
+            {
+                await _categoryFunctionService.UpdateCategoryAsync(category);
+                return RedirectToAction("Index");
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.WriteLine($"Failed to update category: {ex.Message}");
+                ModelState.AddModelError(string.Empty, "Failed to update category. Please try again.");
+            }
         }
-
         return View(category);
     }
+
+
+
 
     // GET: /Category/Delete/
     public async Task<IActionResult> Delete(string partitionKey, string rowKey)
