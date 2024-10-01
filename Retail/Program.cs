@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Retail.Services;
+using Retail.Services.Functions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,6 +71,8 @@ builder.Services.AddSingleton<QueueService>(sp =>
     return new QueueService(connectionString, queueName);
 });
 
+//Function Services Code
+
 // Add HttpClient for CategoryFunctionService
 builder.Services.AddHttpClient<CategoryFunctionService>(); // Register HTTP client service
 
@@ -78,6 +81,16 @@ builder.Services.AddSingleton<CategoryFunctionService>(sp =>
     var httpClient = sp.GetRequiredService<HttpClient>();
     var configuration = sp.GetRequiredService<IConfiguration>();
     return new CategoryFunctionService(httpClient, configuration);
+});
+
+// Add HttpClient for EmployeeContractFunctionService
+builder.Services.AddHttpClient<EmployeeContractFunctionService>();
+
+builder.Services.AddSingleton<EmployeeContractFunctionService>(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    return new EmployeeContractFunctionService(httpClient, configuration);
 });
 
 
