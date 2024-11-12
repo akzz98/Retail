@@ -1,26 +1,27 @@
-﻿using Azure.Storage.Queues;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Retail.Models;
 using Retail.Models.ViewModels;
 using Retail.Services;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Retail.Controllers
 {
     public class CartController : Controller
     {
-        private readonly TableStorageService _tableStorageService;
+        private readonly ProductSqlService _productSqlService; // Use ProductSqlService instead of TableStorageService
         private readonly QueueService _queueService; // Inject a queue service
 
-        public CartController(TableStorageService tableStorageService, QueueService queueService)
+        public CartController(ProductSqlService productSqlService, QueueService queueService) // Updated constructor
         {
-            _tableStorageService = tableStorageService;
+            _productSqlService = productSqlService; // Initialize ProductSqlService
             _queueService = queueService; // Initialize queue service
         }
 
         [HttpGet]
         public IActionResult Index()
         {
-            var cart = HttpContext.Session.Get<CartViewModel>("Cart") ?? new CartViewModel();
+            var cart = HttpContext.Session.Get<CartViewModel>("Cart") ?? new CartViewModel(); // Provide the key "Cart"
             cart.TotalPrice = cart.Items.Sum(i => i.Product.Price * i.Quantity);
 
             // Update the cart item count in ViewBag
@@ -33,16 +34,16 @@ namespace Retail.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Add(string partitionKey, string rowKey, int quantity)
+        public async Task<IActionResult> Add(int productId, int quantity) // Changed to use productId
         {
-            var product = await _tableStorageService.GetProductAsync(partitionKey, rowKey);
+            var product = await _productSqlService.GetProductAsync(productId); // Updated to use ProductSqlService
             if (product == null)
             {
                 return NotFound();
             }
 
-            var cart = HttpContext.Session.Get<CartViewModel>("Cart") ?? new CartViewModel();
-            var cartItem = cart.Items.FirstOrDefault(i => i.Product.RowKey == rowKey);
+            var cart = HttpContext.Session.Get<CartViewModel>("Cart") ?? new CartViewModel(); // Provide the key "Cart"
+            var cartItem = cart.Items.FirstOrDefault(i => i.Product.RowKey == product.RowKey); // Use RowKey or adjust as needed
 
             if (cartItem != null)
             {
@@ -54,12 +55,12 @@ namespace Retail.Controllers
                 {
                     Product = new ProductViewModel
                     {
-                        PartitionKey = product.PartitionKey,
-                        RowKey = product.RowKey,
+                        PartitionKey = product.PartitionKey, // Assuming you have this property
+                        RowKey = product.RowKey, // Assuming you have this property
                         Name = product.Name,
                         Price = product.Price,
                         Description = product.Description,
-                        CategoryName = product.CategoryRowKey,
+                        CategoryName = product.CategoryId.ToString(), // Assuming CategoryId is used
                         Quantity = product.Quantity,
                         ImageUrl = product.ImageUrl
                     },
@@ -67,20 +68,20 @@ namespace Retail.Controllers
                 });
             }
 
-            HttpContext.Session.Set("Cart", cart);
+            HttpContext.Session.Set("Cart", cart); // Save the cart back to session
             return RedirectToAction("Index");
         }
 
         [HttpPost]
-        public IActionResult Remove(string productId)
+        public IActionResult Remove(int productId) // Changed to use productId
         {
-            var cart = HttpContext.Session.Get<CartViewModel>("Cart") ?? new CartViewModel();
-            var cartItem = cart.Items.FirstOrDefault(i => i.Product.RowKey == productId);
+            var cart = HttpContext.Session.Get<CartViewModel>("Cart") ?? new CartViewModel(); // Provide the key "Cart"
+            var cartItem = cart.Items.FirstOrDefault(i => i.Product.RowKey == productId.ToString()); // Use RowKey or adjust as needed
 
             if (cartItem != null)
             {
                 cart.Items.Remove(cartItem);
-                HttpContext.Session.Set("Cart", cart);
+                HttpContext.Session.Set("Cart", cart); // Save the updated cart back to session
             }
 
             return RedirectToAction("Index");
@@ -97,7 +98,7 @@ namespace Retail.Controllers
         [HttpPost]
         public async Task<IActionResult> Checkout()
         {
-            var cart = HttpContext.Session.Get<CartViewModel>("Cart");
+            var cart = HttpContext.Session.Get<CartViewModel>("Cart"); // Provide the key "Cart"
 
             if (cart != null && cart.Items.Any())
             {
@@ -105,8 +106,8 @@ namespace Retail.Controllers
                 {
                     var message = new InventoryUpdateMessage
                     {
-                        PartitionKey = item.Product.PartitionKey,
-                        RowKey = item.Product.RowKey,
+                        PartitionKey = item.Product.PartitionKey, // Assuming you have this property
+                        RowKey = item.Product.RowKey, // Assuming you have this property
                         Quantity = item.Quantity
                     };
 

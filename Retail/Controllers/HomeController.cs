@@ -64,6 +64,7 @@ namespace Retail.Controllers
 
             return View(model);
         }
+
     }
 }
 
