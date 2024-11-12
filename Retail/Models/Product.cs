@@ -8,6 +8,6 @@
         public string Description { get; set; }
         public IFormFile ImageFile { get; set; }
         public int Quantity { get; set; }
-        public string CategoryRowKey { get; set; }
+        public string CategoryId { get; set; }
     }
 }

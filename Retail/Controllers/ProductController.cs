@@ -6,50 +6,55 @@ using Retail.Models;
 using Retail.Models.ViewModels;
 using Retail.Services;
 using System.Net.Http.Headers;
+using System.Linq;
+using Retail.Entities; // Ensure this is included for LINQ operations
 
 namespace Retail.Controllers
 {
     [Authorize(Roles = "Admin")]
     public class ProductController : Controller
     {
-        private readonly TableStorageService _tableStorageService;
-        private readonly BlobStorageService _blobStorageService;
-        private readonly CategoryStorageService _categoryStorageService;
+        private readonly BlobStorageService _blobStorageService; // Keep existing Blob Storage service
+        private readonly CategorySqlService _categorySqlService; // Use the new SQL service for categories
+        private readonly ProductSqlService _productSqlService; // Use the new SQL service for products
         private readonly ILogger<ProductController> _logger;
 
-        public ProductController(TableStorageService tableStorageService, BlobStorageService blobStorageService, CategoryStorageService categoryStorageService, ILogger<ProductController> logger) // Add logger to constructor
+        public ProductController(BlobStorageService blobStorageService, CategorySqlService categorySqlService, ProductSqlService productSqlService, ILogger<ProductController> logger)
         {
-            _tableStorageService = tableStorageService;
-            _blobStorageService = blobStorageService;
-            _categoryStorageService = categoryStorageService;
+            _blobStorageService = blobStorageService; // Existing service
+            _categorySqlService = categorySqlService; // New SQL service for categories
+            _productSqlService = productSqlService; // New SQL service for products
             _logger = logger;
         }
 
         // GET: /Product and return view with list of products
         public async Task<IActionResult> Index()
         {
-            var products = await _tableStorageService.GetAllProductsAsync();
-            var categories = await _categoryStorageService.GetAllCategoriesAsync();
+            // Retrieve all products from the SQL database
+            var products = await _productSqlService.GetAllProductsAsync();
 
+            // Retrieve all categories from the SQL database
+            var categories = await _categorySqlService.GetAllCategoriesAsync();
+
+            // Create a list of ProductViewModel to pass to the view
             var productViewModels = products.Select(product => new ProductViewModel
             {
-                PartitionKey = product.PartitionKey,
-                RowKey = product.RowKey,
+                Id = product.Id, // Assuming you have an Id property in ProductViewModel
                 Name = product.Name,
                 Price = product.Price,
                 Description = product.Description,
                 Quantity = product.Quantity,
                 ImageUrl = product.ImageUrl,
-                CategoryName = categories.FirstOrDefault(category => category.RowKey == product.CategoryRowKey)?.Name
+                CategoryName = categories.FirstOrDefault(category => category.Id == product.CategoryId)?.Name // Match by CategoryId
             });
 
             return View(productViewModels);
         }
 
-        //View Product Details
-        public async Task<IActionResult> Details(string partitionKey, string rowKey)
+        // View Product Details
+        public async Task<IActionResult> Details(int id)
         {
-            var product = await _tableStorageService.GetProductAsync(partitionKey, rowKey);
+            var product = await _productSqlService.GetProductAsync(id);
 
             if (product == null)
             {
@@ -62,13 +67,13 @@ namespace Retail.Controllers
         // GET: /Product/Create
         public async Task<IActionResult> Create()
         {
-            ViewBag.Categories = new SelectList(await _categoryStorageService.GetAllCategoriesAsync(), "RowKey", "Name");
+            ViewBag.Categories = new SelectList(await _categorySqlService.GetAllCategoriesAsync(), "Id", "Name");
             return View();
         }
 
         // POST: /Product/Create
         [HttpPost]
-        public async Task<IActionResult> Create(Product product, IFormFile imageFile)
+        public async Task<IActionResult> Create(ProductEntity product, IFormFile imageFile)
         {
             if (ModelState.IsValid)
             {
@@ -114,39 +119,29 @@ namespace Retail.Controllers
                     }
                 }
 
-                var productEntity = new ProductEntity
-                {
-                    PartitionKey = "Products",
-                    RowKey = Guid.NewGuid().ToString(),
-                    Name = product.Name,
-                    Price = product.Price,
-                    Description = product.Description,
-                    Quantity = product.Quantity,
-                    CategoryRowKey = product.CategoryRowKey,
-                    ImageUrl = imageUrl
-                };
+                product.ImageUrl = imageUrl; // Set the image URL in the product entity
 
-                await _tableStorageService.AddProductAsync(productEntity);
+                await _productSqlService.AddProductAsync(product);
                 return RedirectToAction("Index");
             }
 
+            ViewBag.Categories = new SelectList(await _categorySqlService.GetAllCategoriesAsync(), "Id", "Name");
             return View(product);
         }
 
-
-        //Get: /Product/Edit
-        public async Task<IActionResult> Edit(string partitionKey, string rowKey)
+        // GET: /Product/Edit
+        public async Task<IActionResult> Edit(int id)
         {
-            var product = await _tableStorageService.GetProductAsync(partitionKey, rowKey);
+            var product = await _productSqlService.GetProductAsync(id);
             if (product == null)
             {
                 return NotFound();
             }
-            ViewBag.Categories = new SelectList(await _categoryStorageService.GetAllCategoriesAsync(), "RowKey", "Name");
+            ViewBag.Categories = new SelectList(await _categorySqlService.GetAllCategoriesAsync(), "Id", "Name");
             return View(product);
         }
 
-        //Post: /Product/Edit
+        // POST: /Product/Edit
         [HttpPost]
         public async Task<IActionResult> Edit(ProductEntity product, IFormFile imageFile)
         {
@@ -168,8 +163,8 @@ namespace Retail.Controllers
                         product.ImageUrl = await _blobStorageService.UploadImageAsync(stream, imageFile.FileName);
                     }
 
-                    // Update the product in Table Storage
-                    await _tableStorageService.UpdateProductAsync(product);
+                    // Update the product in SQL
+                    await _productSqlService.UpdateProductAsync(product);
 
                     return RedirectToAction("Index");
                 }
@@ -179,14 +174,15 @@ namespace Retail.Controllers
                     ModelState.AddModelError(string.Empty, "An error occurred while updating the product.");
                 }
             }
+            ViewBag.Categories = new SelectList(await _categorySqlService.GetAllCategoriesAsync(), "Id", "Name");
             return View(product);
         }
 
-        //Delete: /Product/Delete
-        public async Task<IActionResult> Delete(string partitionKey, string rowKey)
+        // DELETE: /Product/Delete
+        public async Task<IActionResult> Delete(int id)
         {
             // Retrieve the product to get the ImageUrl
-            var product = await _tableStorageService.GetProductAsync(partitionKey, rowKey);
+            var product = await _productSqlService.GetProductAsync(id);
 
             if (product != null)
             {
@@ -196,8 +192,8 @@ namespace Retail.Controllers
                     await _blobStorageService.DeleteImageAsync(product.ImageUrl);
                 }
 
-                // Delete the product from Table Storage
-                await _tableStorageService.DeleteProductAsync(partitionKey, rowKey);
+                // Delete the product from SQL
+                await _productSqlService.DeleteProductAsync(product.Id); // Assuming Id is the primary key
             }
 
             return RedirectToAction("Index");

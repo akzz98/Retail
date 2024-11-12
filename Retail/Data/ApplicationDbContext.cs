@@ -9,5 +9,6 @@ namespace Retail.Data
 
         public DbSet<UserEntity> Users { get; set; }
         public DbSet<CategorySqlEntity> Categories { get; set; }
+        public DbSet<ProductEntity> Products { get; set; }
     }
 }
