@@ -2,29 +2,31 @@
 using Microsoft.AspNetCore.Mvc;
 using Retail.Entities;
 using Retail.Models;
+using Retail.Services;
 using System.Text.Json;
 
 [Authorize(Roles = "Admin")]
 public class CategoryController : Controller
 {
-    private readonly CategoryFunctionService _categoryFunctionService;
+    private readonly CategorySqlService _categorySqlService;
 
-    public CategoryController(CategoryFunctionService categoryFunctionService)
+    public CategoryController(CategorySqlService categorySqlService)
     {
-        _categoryFunctionService = categoryFunctionService;
+        _categorySqlService = categorySqlService;
     }
 
     // GET: /Category
     public async Task<IActionResult> Index()
     {
-        var categories = await _categoryFunctionService.GetAllCategoriesAsync();
+        var categories = await _categorySqlService.GetAllCategoriesAsync();
         return View(categories);
     }
 
-    // GET: /Category/Details/{partitionKey}/{rowKey}
-    public async Task<IActionResult> Details(string partitionKey, string rowKey)
+
+    // GET: /Category/Details/{id}
+    public async Task<IActionResult> Details(int id)
     {
-        var category = await _categoryFunctionService.GetCategoryAsync(partitionKey, rowKey);
+        var category = await _categorySqlService.GetCategoryAsync(id);
 
         if (category == null)
         {
@@ -39,31 +41,26 @@ public class CategoryController : Controller
         return View();
     }
 
+
     // POST: /Category/Create
     [HttpPost]
-    public async Task<IActionResult> Create(Category category)
+    public async Task<IActionResult> Create(CategorySqlEntity category)
     {
         if (ModelState.IsValid)
         {
-            var categoryEntity = new CategoryEntity
-            {
-                PartitionKey = "Categories",
-                RowKey = Guid.NewGuid().ToString(), // Auto-generate RowKey
-                Name = category.Name
-            };
-
-            await _categoryFunctionService.CreateCategoryAsync(categoryEntity);
+            await _categorySqlService.AddCategoryAsync(category);
             return RedirectToAction("Index");
         }
 
         return View(category);
     }
 
-    // GET: /Category/Edit/{partitionKey}/{rowKey}
+
+    // GET: /Category/Edit/{id}
     [HttpGet]
-    public async Task<IActionResult> Edit(string partitionKey, string rowKey)
+    public async Task<IActionResult> Edit(int id)
     {
-        var category = await _categoryFunctionService.GetCategoryAsync(partitionKey, rowKey);
+        var category = await _categorySqlService.GetCategoryAsync(id);
         if (category == null)
         {
             return NotFound();
@@ -71,22 +68,15 @@ public class CategoryController : Controller
         return View(category);
     }
 
+
     // POST: /Category/Edit
     [HttpPost]
-    public async Task<IActionResult> Edit(CategoryEntity category)
+    public async Task<IActionResult> Edit(CategorySqlEntity category)
     {
         if (ModelState.IsValid)
         {
-            try
-            {
-                await _categoryFunctionService.UpdateCategoryAsync(category);
-                return RedirectToAction("Index");
-            }
-            catch (HttpRequestException ex)
-            {
-                Console.WriteLine($"Failed to update category: {ex.Message}");
-                ModelState.AddModelError(string.Empty, "Failed to update category. Please try again.");
-            }
+            await _categorySqlService.UpdateCategoryAsync(category);
+            return RedirectToAction("Index");
         }
         return View(category);
     }
@@ -94,14 +84,14 @@ public class CategoryController : Controller
 
 
 
-    // GET: /Category/Delete/
-    public async Task<IActionResult> Delete(string partitionKey, string rowKey)
+    // GET: /Category/Delete/{id}
+    public async Task<IActionResult> Delete(int id)
     {
-        var category = await _categoryFunctionService.GetCategoryAsync(partitionKey, rowKey);
+        var category = await _categorySqlService.GetCategoryAsync(id);
 
         if (category != null)
         {
-            await _categoryFunctionService.DeleteCategoryAsync(partitionKey, rowKey);
+            await _categorySqlService.DeleteCategoryAsync(id);
         }
 
         return RedirectToAction("Index");

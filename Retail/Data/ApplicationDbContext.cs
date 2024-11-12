@@ -8,5 +8,6 @@ namespace Retail.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
         public DbSet<UserEntity> Users { get; set; }
+        public DbSet<CategorySqlEntity> Categories { get; set; }
     }
 }
