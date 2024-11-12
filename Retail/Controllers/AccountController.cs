@@ -12,9 +12,9 @@ namespace Retail.Controllers
 {
     public class AccountController : Controller
     {
-        private readonly UserStorageService _userService;
+        private readonly UserService _userService;
 
-        public AccountController(UserStorageService userService)
+        public AccountController(UserService userService)
         {
             _userService = userService;
         }
@@ -42,8 +42,6 @@ namespace Retail.Controllers
 
                 var user = new UserEntity
                 {
-                    PartitionKey = "Users",
-                    RowKey = Guid.NewGuid().ToString(),
                     Username = model.Username,
                     PasswordHash = HashPassword(model.Password),
                     Email = model.Email,
@@ -87,9 +85,6 @@ namespace Retail.Controllers
             return View(model);
         }
 
-
-
-
         // POST: Account/Logout
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -104,22 +99,19 @@ namespace Retail.Controllers
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.NameIdentifier, user.RowKey),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Role, user.Role)
             };
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var authProperties = new AuthenticationProperties
             {
-                // Keeps the user signed in across sessions
-                IsPersistent = true 
+                IsPersistent = true
             };
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
         }
 
-
-        //Hash the password
         private string HashPassword(string password)
         {
             var passwordHasher = new PasswordHasher<UserEntity>();
@@ -131,29 +123,6 @@ namespace Retail.Controllers
             var passwordHasher = new PasswordHasher<UserEntity>();
             var result = passwordHasher.VerifyHashedPassword(null, hashedPassword, enteredPassword);
             return result == PasswordVerificationResult.Success;
-        }
-
-        [Authorize]
-        public async Task<IActionResult> Edit()
-        {
-            var username = User.Identity.Name;
-            var user = await _userService.GetUserByUsernameAsync(username);
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            var model = new User
-            {
-                UserName = user.Username,
-                Email = user.Email,
-                Name = user.FirstName,
-                Surname = user.LastName,
-                PhoneNumber = user.PhoneNumber
-                // Populate other fields as necessary
-            };
-
-            return View(model);
         }
     }
 }

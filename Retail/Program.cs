@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
+using Retail.Data;
 using Retail.Services;
 using Retail.Services.Functions;
 
@@ -15,6 +17,14 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Configure DbContext with connection string from appsettings.json
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Register UserService
+builder.Services.AddScoped<UserService>();
+
 
 // Configure TableStorageService with connection strings from appsettings.json
 builder.Services.AddSingleton<TableStorageService>(sp =>
@@ -43,14 +53,6 @@ builder.Services.AddSingleton<BlobStorageService>(sp =>
     return new BlobStorageService(connectionString, containerName);
 });
 
-// Add UserStorageService to the services container
-builder.Services.AddSingleton<UserStorageService>(sp =>
-{
-    var configuration = sp.GetRequiredService<IConfiguration>();
-    var connectionString = configuration.GetConnectionString("TableStorageConnection");
-    var tableName = "UsersTable";
-    return new UserStorageService(connectionString, tableName);
-});
 
 // Add FileStorageService to the services container
 builder.Services.AddSingleton<FileStorageService>(sp =>
@@ -104,6 +106,14 @@ builder.Services.AddSession(options =>
 });
 
 var app = builder.Build();
+
+// Apply migrations at startup
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    dbContext.Database.Migrate();
+}
+
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

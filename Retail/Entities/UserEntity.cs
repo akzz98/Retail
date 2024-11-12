@@ -1,24 +1,18 @@
-﻿using Azure.Data.Tables;
-using Azure;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace Retail.Entities
 {
-    public class UserEntity : ITableEntity
+    public class UserEntity
     {
-
-        //Azure Properties
-        public string PartitionKey { get; set; }
-        public string RowKey { get; set; }
-        public DateTimeOffset? Timestamp { get; set; }
-        public ETag ETag { get; set; }
-
-        // Additional properties
+        [Key]
+        public Guid Id { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public int PhoneNumber { get; set; }
+        public string PhoneNumber { get; set; }
         public string Email { get; set; }
         public string Username { get; set; }
-        public string PasswordHash { get; set; } 
-        public string Role { get; set; } = "Admin";
+        public string PasswordHash { get; set; }
+        public string Role { get; set; }
     }
 }
